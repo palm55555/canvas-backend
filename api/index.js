@@ -12,7 +12,7 @@ export default function handler(req, res) {
   // ==========================================
   // 2. IZIN AKSES (CORS) - WAJIB
   // ==========================================
-  // Ini supaya Canvas (Frontend) boleh bertanya ke Backend ini
+  // Ini obat untuk error "Failed to fetch / CORS" yang muncul di screenshot kamu
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*'); 
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
