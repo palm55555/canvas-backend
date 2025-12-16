@@ -1,5 +1,7 @@
-// DATABASE SEMENTARA (Simulasi)
-// Tulis kode permanen kamu di sini biar tidak hilang saat server restart
+// ==========================================
+// 1. DATABASE SEMENTARA (Simulasi)
+// ==========================================
+// Tips: Ganti kode di bawah ini dengan kode jualan aslimu biar permanen
 let databaseKode = {
   "MEMBER-BARU": "2025-12-31",
   "VIP-USER": "2026-01-01",
@@ -7,25 +9,71 @@ let databaseKode = {
 };
 
 export default function handler(req, res) {
-  // 1. JIKA ADMIN MENGHAPUS DATA (DELETE)
-  if (req.method === 'DELETE') {
-    const body = JSON.parse(req.body);
-    delete databaseKode[body.kode]; // Hapus dari memori
-    return res.status(200).json({ status: 'sukses', data: databaseKode });
+  // ==========================================
+  // 2. IZIN AKSES (CORS) - WAJIB
+  // ==========================================
+  // Ini supaya Canvas (Frontend) boleh bertanya ke Backend ini
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*'); 
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+
+  // Handle preflight request (Panggilan pembuka dari browser)
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
   }
 
-  // 2. JIKA ADMIN MENYIMPAN/EDIT DATA (POST)
+  // ==========================================
+  // 3. LOGIKA BACKEND (OTAKNYA)
+  // ==========================================
+
+  // A. JIKA ADMIN HAPUS DATA (DELETE)
+  if (req.method === 'DELETE') {
+    const body = JSON.parse(req.body);
+    delete databaseKode[body.kode]; 
+    return res.status(200).json({ status: 'sukses' });
+  }
+
+  // B. JIKA ADA DATA MASUK (POST)
   if (req.method === 'POST') {
     const body = JSON.parse(req.body);
-    const kodeBaru = body.kode;
-    // Gabungkan Tanggal-Bulan-Tahun jadi format YYYY-MM-DD
-    const tanggalBaru = `${body.tahun}-${body.bulan}-${body.tanggal}`;
 
+    // --- SKENARIO 1: CANVAS MAU CEK KODE (LOGIN) ---
+    // Ciri-cirinya: Ada kata kunci "action": "check"
+    if (body.action === 'check') {
+        const tglExpired = databaseKode[body.kode];
+        
+        // 1. Kode Tidak Ditemukan
+        if (!tglExpired) {
+            return res.status(200).json({ status: 'not_found' });
+        }
+
+        // 2. Cek Apakah Sudah Expired?
+        const hariIni = new Date().toISOString().split('T')[0]; // Ambil tanggal hari ini (YYYY-MM-DD)
+        if (hariIni > tglExpired) {
+            return res.status(200).json({ status: 'expired', exp: tglExpired });
+        }
+
+        // 3. Sukses (Kode Benar & Masih Aktif)
+        return res.status(200).json({ status: 'active', exp: tglExpired });
+    }
+
+    // --- SKENARIO 2: ADMIN MAU SIMPAN KODE BARU ---
+    const kodeBaru = body.kode;
+    // Gabungkan input terpisah menjadi format tanggal YYYY-MM-DD
+    const tanggalBaru = `${body.tahun}-${body.bulan}-${body.tanggal}`;
+    
     databaseKode[kodeBaru] = tanggalBaru;
     return res.status(200).json({ status: 'sukses', data: databaseKode });
   }
 
-  // 3. GENERATE TABEL HTML (Agar muncul di layar)
+  // ==========================================
+  // 4. TAMPILAN ADMIN PANEL (UI KEREN)
+  // ==========================================
+  // Bagian ini persis sama dengan yang kamu suka sebelumnya
+  
+  // Generate Tabel HTML dari Database
   const daftarListHTML = Object.entries(databaseKode).map(([kode, tanggal]) => {
     return `
       <div class="list-item">
@@ -41,7 +89,6 @@ export default function handler(req, res) {
     `;
   }).join('');
 
-  // 4. TAMPILAN ADMIN PANEL (UI)
   res.setHeader('Content-Type', 'text/html');
   res.send(`
     <!DOCTYPE html>
@@ -60,6 +107,8 @@ export default function handler(req, res) {
         .date-row select { margin-bottom: 15px; }
         button.main-btn { width: 100%; padding: 12px; background-color: #38bdf8; color: #0f172a; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
         button.main-btn:hover { background-color: #0ea5e9; }
+        
+        /* List Style */
         .list-container { margin-top: 20px; }
         .list-item { background: #000; padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #334155; }
         .info { display: flex; flex-direction: column; }
@@ -92,32 +141,50 @@ export default function handler(req, res) {
           </div>
           <button onclick="simpanData()" class="main-btn">💾 Simpan / Update</button>
         </div>
+
         <h3 style="color:#94a3b8; text-align:center;">Daftar Kode Aktif</h3>
-        <div class="list-container">${daftarListHTML}</div>
+        <div class="list-container">
+          ${daftarListHTML}
+        </div>
       </div>
+
       <script>
         const today = new Date();
         resetTanggal();
+
         function resetTanggal() {
           document.getElementById('tgl').value = String(today.getDate()).padStart(2, '0');
           document.getElementById('bln').value = String(today.getMonth() + 1).padStart(2, '0');
           document.getElementById('thn').value = today.getFullYear();
         }
+
         async function simpanData() {
           const kode = document.getElementById('kodeInput').value;
           const tanggal = document.getElementById('tgl').value;
           const bulan = document.getElementById('bln').value;
           const tahun = document.getElementById('thn').value;
+
           if(!kode) { alert("Isi kodenya dulu!"); return; }
-          await fetch('/api', { method: 'POST', body: JSON.stringify({ kode, tanggal, bulan, tahun }) });
-          location.reload();
+
+          // Kita kirim data biasa (tanpa action check)
+          await fetch('/api', {
+            method: 'POST',
+            body: JSON.stringify({ kode, tanggal, bulan, tahun })
+          });
+          
+          location.reload(); 
         }
+
         async function hapusKode(kode) {
           if(confirm("Yakin mau hapus kode " + kode + "?")) {
-            await fetch('/api', { method: 'DELETE', body: JSON.stringify({ kode }) });
+            await fetch('/api', {
+              method: 'DELETE',
+              body: JSON.stringify({ kode })
+            });
             location.reload();
           }
         }
+
         function editKode(kode, tanggalLengkap) {
           document.getElementById('kodeInput').value = kode;
           const pisah = tanggalLengkap.split('-');
