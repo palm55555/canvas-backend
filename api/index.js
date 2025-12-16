@@ -1,5 +1,4 @@
 // DATABASE SEMENTARA (Simulasi)
-// Nanti kode yang kamu buat akan muncul di bawah sini
 let databaseKode = {
   "CONTOH": "2025-12-31" 
 };
@@ -9,15 +8,14 @@ export default function handler(req, res) {
   if (req.method === 'POST') {
     const body = JSON.parse(req.body);
     const kodeBaru = body.kode;
-    const tanggalBaru = body.tanggal;
+    // Gabungkan Tanggal-Bulan-Tahun jadi format YYYY-MM-DD
+    const tanggalBaru = `${body.tahun}-${body.bulan}-${body.tanggal}`;
 
-    // Simpan ke database sementara
     databaseKode[kodeBaru] = tanggalBaru;
-
     return res.status(200).json({ status: 'sukses', data: databaseKode });
   }
 
-  // 2. JIKA ORANG BUKA LINK (GET) -> TAMPILKAN PANEL KEREN
+  // 2. TAMPILAN ADMIN PANEL (UI)
   res.setHeader('Content-Type', 'text/html');
   res.send(`
     <!DOCTYPE html>
@@ -27,7 +25,7 @@ export default function handler(req, res) {
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <style>
         body {
-          background-color: #0f172a; /* Warna Gelap Premium */
+          background-color: #0f172a;
           color: #e2e8f0;
           font-family: 'Segoe UI', sans-serif;
           display: flex;
@@ -41,15 +39,14 @@ export default function handler(req, res) {
           padding: 2rem;
           border-radius: 15px;
           box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-          width: 350px;
+          width: 380px; /* Sedikit lebih lebar */
           text-align: center;
           border: 1px solid #334155;
         }
         h2 { margin-bottom: 20px; color: #38bdf8; }
         label { display: block; text-align: left; margin-bottom: 5px; font-size: 0.9rem; color: #94a3b8; }
         
-        /* Kotak Input yang Besar & Empuk */
-        input {
+        input, select {
           width: 100%;
           padding: 12px;
           margin-bottom: 15px;
@@ -58,11 +55,19 @@ export default function handler(req, res) {
           background-color: #0f172a;
           color: white;
           font-size: 1rem;
-          box-sizing: border-box; /* Agar padding tidak merusak lebar */
         }
-        input:focus { outline: 2px solid #38bdf8; border-color: transparent; }
+        
+        /* Baris Khusus Tanggal (Biar sejajar 3 kolom) */
+        .date-row {
+          display: flex;
+          gap: 10px;
+          margin-bottom: 15px;
+        }
+        .date-row select {
+          margin-bottom: 0; /* Hapus margin bawah karena sudah ada di row */
+          padding: 10px;
+        }
 
-        /* Tombol yang Enak Ditekan */
         button {
           width: 100%;
           padding: 12px;
@@ -73,11 +78,10 @@ export default function handler(req, res) {
           font-size: 1rem;
           font-weight: bold;
           cursor: pointer;
-          transition: 0.2s;
+          margin-top: 10px;
         }
         button:hover { background-color: #0ea5e9; }
 
-        /* Hasil Data di Bawah */
         .output {
           margin-top: 20px;
           text-align: left;
@@ -87,41 +91,76 @@ export default function handler(req, res) {
           font-family: monospace;
           font-size: 0.85rem;
           color: #22c55e;
-          min-height: 50px;
         }
       </style>
     </head>
     <body>
 
       <div class="card">
-        <h2>🔐 Admin Panel</h2>
+        <h2>🔐 Admin Panel v2</h2>
         
         <label>Kode Akses Baru</label>
-        <input type="text" id="kodeInput" placeholder="Misal: VIP-MEMBER">
+        <input type="text" id="kodeInput" placeholder="Contoh: PREMIUM-USER">
 
         <label>Berlaku Sampai</label>
-        <input type="date" id="tanggalInput">
+        <div class="date-row">
+          <select id="tgl">
+            ${Array.from({length: 31}, (_, i) => `<option value="${String(i+1).padStart(2,'0')}">${i+1}</option>`).join('')}
+          </select>
+          
+          <select id="bln">
+            <option value="01">Januari</option>
+            <option value="02">Februari</option>
+            <option value="03">Maret</option>
+            <option value="04">April</option>
+            <option value="05">Mei</option>
+            <option value="06">Juni</option>
+            <option value="07">Juli</option>
+            <option value="08">Agustus</option>
+            <option value="09">September</option>
+            <option value="10">Oktober</option>
+            <option value="11">November</option>
+            <option value="12">Desember</option>
+          </select>
+
+          <select id="thn">
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+            <option value="2029">2029</option>
+            <option value="2030">2030</option>
+          </select>
+        </div>
 
         <button onclick="simpanData()">Simpan Akses</button>
 
-        <div class="output" id="hasil">Data saat ini:<br>${JSON.stringify(databaseKode)}</div>
+        <div class="output" id="hasil">Data Database:<br>${JSON.stringify(databaseKode)}</div>
       </div>
 
       <script>
+        // Set tanggal hari ini saat dibuka
+        const today = new Date();
+        document.getElementById('tgl').value = String(today.getDate()).padStart(2, '0');
+        document.getElementById('bln').value = String(today.getMonth() + 1).padStart(2, '0');
+        document.getElementById('thn').value = today.getFullYear();
+
         async function simpanData() {
           const kode = document.getElementById('kodeInput').value;
-          const tanggal = document.getElementById('tanggalInput').value;
+          const tanggal = document.getElementById('tgl').value;
+          const bulan = document.getElementById('bln').value;
+          const tahun = document.getElementById('thn').value;
 
-          if(!kode || !tanggal) { alert("Isi dulu dong bos!"); return; }
+          if(!kode) { alert("Kode belum diisi bos!"); return; }
 
           const res = await fetch('/api', {
             method: 'POST',
-            body: JSON.stringify({ kode, tanggal })
+            body: JSON.stringify({ kode, tanggal, bulan, tahun })
           });
 
           const json = await res.json();
-          document.getElementById('hasil').innerHTML = "✅ Berhasil Disimpan:<br>" + JSON.stringify(json.data, null, 2);
-          alert("Kode " + kode + " berhasil dibuat!");
+          document.getElementById('hasil').innerHTML = "✅ Tersimpan:<br>" + JSON.stringify(json.data, null, 2);
+          alert("Akses " + kode + " berhasil dibuat!");
         }
       </script>
     </body>
